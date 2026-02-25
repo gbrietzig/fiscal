@@ -17,6 +17,12 @@ interface MonthTotal {
     total: number;
 }
 
+interface SupplierTotal {
+    name: string;
+    id: string;
+    total: number;
+}
+
 export const DeputyDashboard: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -24,7 +30,9 @@ export const DeputyDashboard: React.FC = () => {
     const [totalSpent, setTotalSpent] = useState(0);
     const [categoryData, setCategoryData] = useState<CategoryTotal[]>([]);
     const [timelineData, setTimelineData] = useState<MonthTotal[]>([]);
+    const [supplierData, setSupplierData] = useState<SupplierTotal[]>([]);
     const [loading, setLoading] = useState(true);
+
 
 
     useEffect(() => {
@@ -50,13 +58,19 @@ export const DeputyDashboard: React.FC = () => {
             const currentYear = new Date().getFullYear();
             const { data: expenses, error: expenseErr } = await supabase
                 .from('expenses')
-                .select('category, net_value, issue_date')
+                .select('category, net_value, issue_date, supplier_name, supplier_id')
                 .eq('deputy_id', id)
                 .gte('issue_date', `${currentYear}-01-01`);
 
             if (expenseErr) throw expenseErr;
 
-            const typedExpenses = (expenses || []) as { category: string; net_value: number; issue_date: string }[];
+            const typedExpenses = (expenses || []) as {
+                category: string;
+                net_value: number;
+                issue_date: string;
+                supplier_name: string;
+                supplier_id: string;
+            }[];
 
             // Calculate total
             const sum = typedExpenses.reduce((acc, curr) => acc + Number(curr.net_value), 0);
@@ -96,6 +110,23 @@ export const DeputyDashboard: React.FC = () => {
                 .sort((a, b) => a.key.localeCompare(b.key));
 
             setTimelineData(formattedTimelineData);
+
+            // 5. Group by supplier
+            const supplierGrouped = typedExpenses.reduce((acc: Record<string, { name: string, total: number }>, curr) => {
+                const key = curr.supplier_id || 'Desconhecido';
+                if (!acc[key]) {
+                    acc[key] = { name: curr.supplier_name || 'Desconhecido', total: 0 };
+                }
+                acc[key].total += Number(curr.net_value);
+                return acc;
+            }, {});
+
+            const formattedSupplierData = Object.entries(supplierGrouped)
+                .map(([id, info]) => ({ id, name: info.name, total: info.total }))
+                .sort((a, b) => b.total - a.total)
+                .slice(0, 10);
+
+            setSupplierData(formattedSupplierData);
 
         } catch (err: any) {
             console.error('Error fetching dashboard data:', err.message);
@@ -183,6 +214,27 @@ export const DeputyDashboard: React.FC = () => {
                     </div>
                 </section>
 
+                <section className="dashboard__suppliers">
+                    <div className="dashboard__chart-card">
+                        <h3 className="dashboard__section-title">Top 10 Fornecedores</h3>
+                        {supplierData.length > 0 ? (
+                            <div className="supplier-list">
+                                {supplierData.map((s, index) => (
+                                    <div key={s.id} className="supplier-item">
+                                        <div className="supplier-item__rank">{index + 1}º</div>
+                                        <div className="supplier-item__info">
+                                            <p className="supplier-item__name">{s.name}</p>
+                                            <p className="supplier-item__id">ID: {s.id}</p>
+                                        </div>
+                                        <div className="supplier-item__value">{formatCurrency(s.total)}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="dashboard__no-data">Nenhum fornecedor registrado.</div>
+                        )}
+                    </div>
+                </section>
 
                 <section className="dashboard__disclaimer">
 
