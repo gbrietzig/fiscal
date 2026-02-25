@@ -5,7 +5,9 @@ import type { Deputy } from '@fiscal/shared';
 import { CEAP_CEILINGS, DEFAULT_CEILING } from '../../lib/constants';
 import { ExpenseCategoryChart } from '../../components/Charts/ExpenseCategoryChart';
 import { ExpenseTimelineChart } from '../../components/Charts/ExpenseTimelineChart';
+import { BenchmarkingChart } from '../../components/Charts/BenchmarkingChart';
 import './DeputyDashboard.css';
+
 
 interface CategoryTotal {
     category: string;
@@ -31,7 +33,10 @@ export const DeputyDashboard: React.FC = () => {
     const [categoryData, setCategoryData] = useState<CategoryTotal[]>([]);
     const [timelineData, setTimelineData] = useState<MonthTotal[]>([]);
     const [supplierData, setSupplierData] = useState<SupplierTotal[]>([]);
+    const [partyAvg, setPartyAvg] = useState(0);
+    const [stateAvg, setStateAvg] = useState(0);
     const [loading, setLoading] = useState(true);
+
 
 
 
@@ -128,7 +133,50 @@ export const DeputyDashboard: React.FC = () => {
 
             setSupplierData(formattedSupplierData);
 
+            setSupplierData(formattedSupplierData);
+
+            // 6. Fetch Averages (Party & State)
+            // Note: In a real app, this should be a DB view or function for performance
+            if (profile) {
+                const currentYear = new Date().getFullYear();
+
+                // Party average
+                const { data: partyDeputies } = await supabase
+                    .from('deputies')
+                    .select('id')
+                    .eq('party', profile.party);
+
+                const partyIds = (partyDeputies || []).map(d => d.id);
+
+                const { data: partyExpenses } = await supabase
+                    .from('expenses')
+                    .select('net_value')
+                    .in('deputy_id', partyIds)
+                    .gte('issue_date', `${currentYear}-01-01`);
+
+                const partySum = (partyExpenses || []).reduce((acc, curr) => acc + Number(curr.net_value), 0);
+                setPartyAvg(partyIds.length > 0 ? partySum / partyIds.length : 0);
+
+                // State average
+                const { data: stateDeputies } = await supabase
+                    .from('deputies')
+                    .select('id')
+                    .eq('state', profile.state);
+
+                const stateIds = (stateDeputies || []).map(d => d.id);
+
+                const { data: stateExpenses } = await supabase
+                    .from('expenses')
+                    .select('net_value')
+                    .in('deputy_id', stateIds)
+                    .gte('issue_date', `${currentYear}-01-01`);
+
+                const stateSum = (stateExpenses || []).reduce((acc, curr) => acc + Number(curr.net_value), 0);
+                setStateAvg(stateIds.length > 0 ? stateSum / stateIds.length : 0);
+            }
+
         } catch (err: any) {
+
             console.error('Error fetching dashboard data:', err.message);
         } finally {
             setLoading(false);
@@ -212,7 +260,23 @@ export const DeputyDashboard: React.FC = () => {
                             <div className="dashboard__no-data">Dados insuficientes para gerar a linha do tempo.</div>
                         )}
                     </div>
+
+                    <div className="dashboard__chart-card">
+                        <h3 className="dashboard__section-title">Comparativo (Benchmarking)</h3>
+                        <BenchmarkingChart
+                            currentValue={totalSpent}
+                            partyAvg={partyAvg}
+                            stateAvg={stateAvg}
+                            deputyName={deputy.name.split(' ')[0]}
+                        />
+                        <p className="dashboard__chart-note">
+                            {totalSpent > partyAvg
+                                ? `Gasto ${Math.round(((totalSpent / partyAvg) - 1) * 100)}% acima da média do partido.`
+                                : `Gasto ${Math.round((1 - (totalSpent / partyAvg)) * 100)}% abaixo da média do partido.`}
+                        </p>
+                    </div>
                 </section>
+
 
                 <section className="dashboard__suppliers">
                     <div className="dashboard__chart-card">

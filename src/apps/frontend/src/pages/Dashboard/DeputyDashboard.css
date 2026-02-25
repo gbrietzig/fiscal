@@ -140,7 +140,18 @@
     color: #f8fafc;
 }
 
+.dashboard__chart-note {
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+    color: #94a3b8;
+    padding: 0.75rem;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    text-align: center;
+}
+
 .dashboard__no-data {
+
     height: 200px;
     display: flex;
     align-items: center;
