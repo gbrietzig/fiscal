@@ -2,33 +2,50 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import type { Deputy } from '@fiscal/shared';
+import { CEAP_CEILINGS, DEFAULT_CEILING } from '../../lib/constants';
 import './DeputyDashboard.css';
 
 export const DeputyDashboard: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [deputy, setDeputy] = useState<Deputy | null>(null);
+    const [totalSpent, setTotalSpent] = useState(0);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (id) {
-            fetchDeputyDetails();
+            loadData();
         }
     }, [id]);
 
-    const fetchDeputyDetails = async () => {
+    const loadData = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
+            // 1. Fetch Profile
+            const { data: profile, error: profileErr } = await supabase
                 .from('deputies')
                 .select('*')
                 .eq('id', id)
                 .single();
 
-            if (error) throw error;
-            setDeputy(data);
+            if (profileErr) throw profileErr;
+            setDeputy(profile);
+
+            // 2. Fetch Expenses Sum (Current Year)
+            const currentYear = new Date().getFullYear();
+            const { data: expenses, error: expenseErr } = await supabase
+                .from('expenses')
+                .select('net_value')
+                .eq('deputy_id', id)
+                .gte('issue_date', `${currentYear}-01-01`);
+
+            if (expenseErr) throw expenseErr;
+
+            const sum = (expenses || []).reduce((acc, curr) => acc + Number(curr.net_value), 0);
+            setTotalSpent(sum);
+
         } catch (err: any) {
-            console.error('Error fetching deputy:', err.message);
+            console.error('Error fetching dashboard data:', err.message);
         } finally {
             setLoading(false);
         }
@@ -36,6 +53,16 @@ export const DeputyDashboard: React.FC = () => {
 
     if (loading) return <div className="dashboard-status">Carregando detalhes...</div>;
     if (!deputy) return <div className="dashboard-status">Deputado não encontrado.</div>;
+
+    const ceiling = CEAP_CEILINGS[deputy.state] || DEFAULT_CEILING;
+    // For MVP, we compare current month's potential or just a representation
+    // Let's assume average monthly spend if we had more data, 
+    // for now we'll show total vs annual ceiling or state monthly limit
+    const usagePercent = Math.min(Math.round((totalSpent / ceiling) * 100), 100);
+
+    const formatCurrency = (val: number) => {
+        return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    };
 
     return (
         <div className="dashboard">
@@ -58,16 +85,22 @@ export const DeputyDashboard: React.FC = () => {
                 <section className="dashboard__stats-grid">
                     <div className="stat-card">
                         <h3 className="stat-card__label">Gasto Total (Ano Corrente)</h3>
-                        <p className="stat-card__value">R$ 0,00</p>
+                        <p className="stat-card__value">{formatCurrency(totalSpent)}</p>
                         <span className="stat-card__note">Baseado em dados da Câmara</span>
                     </div>
 
                     <div className="stat-card">
-                        <h3 className="stat-card__label">Utilização da Cota (Média)</h3>
+                        <h3 className="stat-card__label">Utilização da Cota (Mensal UF)</h3>
                         <div className="stat-card__progress-container">
-                            <div className="stat-card__progress-bar" style={{ width: '45%' }}></div>
+                            <div
+                                className="stat-card__progress-bar"
+                                style={{
+                                    width: `${usagePercent}%`,
+                                    backgroundColor: usagePercent > 90 ? '#ef4444' : usagePercent > 70 ? '#f59e0b' : '#2563eb'
+                                }}
+                            ></div>
                         </div>
-                        <p className="stat-card__percentage">45%</p>
+                        <p className="stat-card__percentage">{usagePercent}% do teto ({formatCurrency(ceiling)})</p>
                     </div>
 
                     <div className="stat-card">
@@ -77,7 +110,7 @@ export const DeputyDashboard: React.FC = () => {
                 </section>
 
                 <section className="dashboard__disclaimer">
-                    <p>⚠️ Os dados de despesas detalhadas serão integrados no Épico 3.</p>
+                    <p>⚠️ Os dados de despesas detalhadas (notas fiscais) serão sincronizados no Épico 3.</p>
                 </section>
             </main>
         </div>
