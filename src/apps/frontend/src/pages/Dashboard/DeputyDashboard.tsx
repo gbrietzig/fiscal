@@ -314,9 +314,9 @@ export const DeputyDashboard: React.FC = () => {
                 </section>
 
                 <section className="dashboard__disclaimer">
-
-                    <p>⚠️ Os dados de despesas detalhadas (notas fiscais) serão sincronizados no Épico 3.</p>
+                    <p>📊 Dados sincronizados via API de Dados Abertos da Câmara dos Deputados (Histórico 2025-2026).</p>
                 </section>
+
             </main>
         </div>
     );
