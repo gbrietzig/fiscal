@@ -59,13 +59,13 @@ export const DeputyDashboard: React.FC = () => {
             if (profileErr) throw profileErr;
             setDeputy(profile);
 
-            // 2. Fetch Expenses (Current Year)
-            const currentYear = new Date().getFullYear();
+            // 2. Fetch Expenses (From 2025 onwards for better data)
             const { data: expenses, error: expenseErr } = await supabase
                 .from('expenses')
                 .select('category, net_value, issue_date, supplier_name, supplier_id')
                 .eq('deputy_id', id)
-                .gte('issue_date', `${currentYear}-01-01`);
+                .gte('issue_date', '2025-01-01');
+
 
             if (expenseErr) throw expenseErr;
 
@@ -96,11 +96,15 @@ export const DeputyDashboard: React.FC = () => {
 
             // 4. Group by month for timeline
             const monthGrouped = typedExpenses.reduce((acc: Record<string, number>, curr) => {
-                const date = new Date(curr.issue_date);
-                const key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+                if (!curr.issue_date) return acc;
+                // Safely parse YYYY-MM
+                const parts = curr.issue_date.split('-');
+                if (parts.length < 2) return acc;
+                const key = `${parts[0]}-${parts[1]}`;
                 acc[key] = (acc[key] || 0) + Number(curr.net_value);
                 return acc;
             }, {});
+
 
             const monthsPt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
             const formattedTimelineData = Object.entries(monthGrouped)
@@ -133,12 +137,9 @@ export const DeputyDashboard: React.FC = () => {
 
             setSupplierData(formattedSupplierData);
 
-            setSupplierData(formattedSupplierData);
 
             // 6. Fetch Averages (Party & State)
-            // Note: In a real app, this should be a DB view or function for performance
             if (profile) {
-                const currentYear = new Date().getFullYear();
 
                 // Party average
                 const { data: partyDeputies } = await supabase
@@ -152,7 +153,7 @@ export const DeputyDashboard: React.FC = () => {
                     .from('expenses')
                     .select('net_value')
                     .in('deputy_id', partyIds)
-                    .gte('issue_date', `${currentYear}-01-01`);
+                    .gte('issue_date', '2025-01-01');
 
                 const partySum = (partyExpenses || []).reduce((acc, curr) => acc + Number(curr.net_value), 0);
                 setPartyAvg(partyIds.length > 0 ? partySum / partyIds.length : 0);
@@ -169,13 +170,25 @@ export const DeputyDashboard: React.FC = () => {
                     .from('expenses')
                     .select('net_value')
                     .in('deputy_id', stateIds)
-                    .gte('issue_date', `${currentYear}-01-01`);
+                    .gte('issue_date', '2025-01-01');
+
 
                 const stateSum = (stateExpenses || []).reduce((acc, curr) => acc + Number(curr.net_value), 0);
                 setStateAvg(stateIds.length > 0 ? stateSum / stateIds.length : 0);
             }
 
+            setSupplierData(formattedSupplierData);
+
+            console.log(`📊 Dashboard Data Loaded for ${id}:`, {
+                expensesCount: typedExpenses.length,
+                totalSpent: sum,
+                timelinePoints: formattedTimelineData.length,
+                partyAvg,
+                stateAvg
+            });
+
         } catch (err: any) {
+
 
             console.error('Error fetching dashboard data:', err.message);
         } finally {

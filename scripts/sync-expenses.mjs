@@ -19,12 +19,24 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 async function syncExpenses(deputyId) {
     console.log(`📡 Buscando despesas para o deputado ${deputyId}...`)
 
-    const CAMARA_API = `https://dadosabertos.camara.leg.br/api/v2/deputados/${deputyId}/despesas?ordem=DESC&ordenarPor=ano`
-
     try {
-        const response = await fetch(CAMARA_API)
-        const json = await response.json()
-        const rawExpenses = json.dados
+        const years = [2025, 2026]
+        let allExpenses = []
+
+        for (const year of years) {
+            console.log(`📅 Buscando ano ${year}...`)
+            const CAMARA_API = `https://dadosabertos.camara.leg.br/api/v2/deputados/${deputyId}/despesas?ano=${year}&ordem=DESC&ordenarPor=mes`
+
+            try {
+                const response = await fetch(CAMARA_API)
+                const json = await response.json()
+                if (json.dados) allExpenses = [...allExpenses, ...json.dados]
+            } catch (err) {
+                console.error(`Erro ao buscar ano ${year}:`, err.message)
+            }
+        }
+
+        const rawExpenses = allExpenses
 
         if (!rawExpenses || rawExpenses.length === 0) {
             console.log('⚠️ Nenhuma despesa encontrada para este deputado.')
