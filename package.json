@@ -1,0 +1,14 @@
+{
+    "name": "fiscal-monorepo",
+    "private": true,
+    "version": "1.0.0",
+    "workspaces": [
+        "src/apps/*",
+        "src/packages/*"
+    ],
+    "scripts": {
+        "dev": "npm run dev --workspace=@fiscal/frontend",
+        "build": "npm run build --workspaces",
+        "test": "npm run test --workspaces"
+    }
+}
