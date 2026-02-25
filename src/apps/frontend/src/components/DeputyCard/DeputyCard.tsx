@@ -1,5 +1,5 @@
 import React from 'react';
-import { Deputy } from '@fiscal/shared';
+import type { Deputy } from '@fiscal/shared';
 import './DeputyCard.css';
 
 interface DeputyCardProps {

@@ -22,3 +22,5 @@ export interface Expense {
     issue_date: string;
     sync_source: 'api' | 'bulk';
 }
+
+export const SHARED_VERSION = '1.0.0';

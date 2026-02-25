@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Deputy } from '@fiscal/shared';
+import type { Deputy } from '@fiscal/shared';
 import { DeputyCard } from '../../components/DeputyCard/DeputyCard';
 import './SearchPage.css';
 
