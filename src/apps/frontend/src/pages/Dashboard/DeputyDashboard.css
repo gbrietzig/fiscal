@@ -119,7 +119,40 @@
     text-align: right;
 }
 
+.dashboard__charts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.dashboard__chart-card {
+    background-color: #1e293b;
+    padding: 2rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dashboard__section-title {
+    margin: 0 0 1.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #f8fafc;
+}
+
+.dashboard__no-data {
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    font-style: italic;
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
 .dashboard__disclaimer {
+
     text-align: center;
     padding: 1rem;
     background-color: rgba(245, 158, 11, 0.05);

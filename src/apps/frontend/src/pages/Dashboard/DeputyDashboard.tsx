@@ -3,14 +3,29 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import type { Deputy } from '@fiscal/shared';
 import { CEAP_CEILINGS, DEFAULT_CEILING } from '../../lib/constants';
+import { ExpenseCategoryChart } from '../../components/Charts/ExpenseCategoryChart';
+import { ExpenseTimelineChart } from '../../components/Charts/ExpenseTimelineChart';
 import './DeputyDashboard.css';
+
+interface CategoryTotal {
+    category: string;
+    total: number;
+}
+
+interface MonthTotal {
+    month: string;
+    total: number;
+}
 
 export const DeputyDashboard: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [deputy, setDeputy] = useState<Deputy | null>(null);
     const [totalSpent, setTotalSpent] = useState(0);
+    const [categoryData, setCategoryData] = useState<CategoryTotal[]>([]);
+    const [timelineData, setTimelineData] = useState<MonthTotal[]>([]);
     const [loading, setLoading] = useState(true);
+
 
     useEffect(() => {
         if (id) {
@@ -31,18 +46,56 @@ export const DeputyDashboard: React.FC = () => {
             if (profileErr) throw profileErr;
             setDeputy(profile);
 
-            // 2. Fetch Expenses Sum (Current Year)
+            // 2. Fetch Expenses (Current Year)
             const currentYear = new Date().getFullYear();
             const { data: expenses, error: expenseErr } = await supabase
                 .from('expenses')
-                .select('net_value')
+                .select('category, net_value, issue_date')
                 .eq('deputy_id', id)
                 .gte('issue_date', `${currentYear}-01-01`);
 
             if (expenseErr) throw expenseErr;
 
-            const sum = (expenses || []).reduce((acc, curr) => acc + Number(curr.net_value), 0);
+            const typedExpenses = (expenses || []) as { category: string; net_value: number; issue_date: string }[];
+
+            // Calculate total
+            const sum = typedExpenses.reduce((acc, curr) => acc + Number(curr.net_value), 0);
             setTotalSpent(sum);
+
+            // 3. Group by category
+            const categoryGrouped = typedExpenses.reduce((acc: Record<string, number>, curr) => {
+                const cat = curr.category || 'Outros';
+                acc[cat] = (acc[cat] || 0) + Number(curr.net_value);
+                return acc;
+            }, {});
+
+            const formattedCategoryData = Object.entries(categoryGrouped)
+                .map(([category, total]) => ({ category, total }))
+                .sort((a, b) => b.total - a.total);
+
+            setCategoryData(formattedCategoryData);
+
+            // 4. Group by month for timeline
+            const monthGrouped = typedExpenses.reduce((acc: Record<string, number>, curr) => {
+                const date = new Date(curr.issue_date);
+                const key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+                acc[key] = (acc[key] || 0) + Number(curr.net_value);
+                return acc;
+            }, {});
+
+            const monthsPt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+            const formattedTimelineData = Object.entries(monthGrouped)
+                .map(([key, total]) => {
+                    const [year, month] = key.split('-');
+                    return {
+                        key,
+                        month: `${monthsPt[parseInt(month) - 1]}/${year}`,
+                        total
+                    };
+                })
+                .sort((a, b) => a.key.localeCompare(b.key));
+
+            setTimelineData(formattedTimelineData);
 
         } catch (err: any) {
             console.error('Error fetching dashboard data:', err.message);
@@ -50,6 +103,7 @@ export const DeputyDashboard: React.FC = () => {
             setLoading(false);
         }
     };
+
 
     if (loading) return <div className="dashboard-status">Carregando detalhes...</div>;
     if (!deputy) return <div className="dashboard-status">Deputado não encontrado.</div>;
@@ -109,7 +163,29 @@ export const DeputyDashboard: React.FC = () => {
                     </div>
                 </section>
 
+                <section className="dashboard__charts">
+                    <div className="dashboard__chart-card">
+                        <h3 className="dashboard__section-title">Distribuição por Categoria</h3>
+                        {categoryData.length > 0 ? (
+                            <ExpenseCategoryChart data={categoryData} type="bar" />
+                        ) : (
+                            <div className="dashboard__no-data">Nenhuma despesa registrada para este ano.</div>
+                        )}
+                    </div>
+
+                    <div className="dashboard__chart-card">
+                        <h3 className="dashboard__section-title">Evolução Mensal (Timeline)</h3>
+                        {timelineData.length > 0 ? (
+                            <ExpenseTimelineChart data={timelineData} />
+                        ) : (
+                            <div className="dashboard__no-data">Dados insuficientes para gerar a linha do tempo.</div>
+                        )}
+                    </div>
+                </section>
+
+
                 <section className="dashboard__disclaimer">
+
                     <p>⚠️ Os dados de despesas detalhadas (notas fiscais) serão sincronizados no Épico 3.</p>
                 </section>
             </main>
