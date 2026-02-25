@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import type { Deputy } from '@fiscal/shared';
 import { DeputyCard } from '../../components/DeputyCard/DeputyCard';
 import './SearchPage.css';
 
 export const SearchPage: React.FC = () => {
+    const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
+
     const [deputies, setDeputies] = useState<Deputy[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -16,6 +19,7 @@ export const SearchPage: React.FC = () => {
 
     const fetchDeputies = async (query: string = '') => {
         setLoading(true);
+        setError(null);
         try {
             let supabaseQuery = supabase
                 .from('deputies')
@@ -31,9 +35,15 @@ export const SearchPage: React.FC = () => {
             if (error) throw error;
             setDeputies(data || []);
         } catch (err: any) {
-            console.error('Error fetching deputies:', err);
-            setError(err.message);
+            console.error('ERRO SUPABASE: Não foi possível carregar os dados reais.', err.message);
+            // Mock data fallback para o usuário não ver uma página quebrada
+            const mocks: Deputy[] = [
+                { id: 1, name: 'Exemplo: Verifique sua tabela "deputies"', party: 'ERR', state: 'DB', photo_url: 'https://www.camara.leg.br/internet/deputado/bandep/204379.jpg' },
+                { id: 2, name: 'Exemplo: Veja se a chave anon está correta', party: 'ERR', state: 'KEY', photo_url: 'https://www.camara.leg.br/internet/deputado/bandep/204554.jpg' }
+            ];
+            setDeputies(mocks);
         } finally {
+
             setLoading(false);
         }
     };
@@ -71,8 +81,13 @@ export const SearchPage: React.FC = () => {
                     <div className="search-page__results">
                         {deputies.length > 0 ? (
                             deputies.map((deputy) => (
-                                <DeputyCard key={deputy.id} deputy={deputy} />
+                                <DeputyCard
+                                    key={deputy.id}
+                                    deputy={deputy}
+                                    onClick={(id) => navigate(`/deputy/${id}`)}
+                                />
                             ))
+
                         ) : (
                             <p className="search-page__status">Nenhum deputado encontrado.</p>
                         )}
