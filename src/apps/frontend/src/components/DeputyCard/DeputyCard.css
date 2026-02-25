@@ -1,0 +1,43 @@
+.deputy-card {
+  background-color: var(--card-bg, #1e293b);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.deputy-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  border-color: var(--primary-color, #2563eb);
+}
+
+.deputy-card__photo {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  background-color: #0f172a;
+}
+
+.deputy-card__info {
+  padding: 1rem;
+}
+
+.deputy-card__name {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.deputy-card__party-state {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  color: #94a3b8;
+}
